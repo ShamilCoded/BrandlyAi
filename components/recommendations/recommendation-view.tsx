@@ -42,6 +42,7 @@ import type {
 interface RecommendationViewProps {
   onViewCreatorProfile: (creatorId: string) => void;
   onOpenProposalModal: (creator: Creator, campaignId: string) => void;
+  onGeneratePitch?: (creator: Creator, campaignId: string) => void;
   onToggleCompare: (creatorId: string) => void;
   comparedCreatorIds: string[];
   onCreateCampaign?: () => void;
@@ -50,6 +51,7 @@ interface RecommendationViewProps {
 export function RecommendationView({
   onViewCreatorProfile,
   onOpenProposalModal,
+  onGeneratePitch,
   onToggleCompare,
   comparedCreatorIds,
   onCreateCampaign,
@@ -496,6 +498,19 @@ export function RecommendationView({
                         <Eye className="w-4 h-4" />
                         <span>View Profile</span>
                       </button>
+
+                      {fullCreator && onGeneratePitch && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onGeneratePitch(fullCreator, rec.campaignId)
+                          }
+                          className="px-4 py-2 text-sm font-semibold text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/40 rounded-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-sm transition-colors"
+                        >
+                          <Sparkles className="w-4 h-4 text-indigo-400" />
+                          <span>Generate Pitch</span>
+                        </button>
+                      )}
 
                       {fullCreator && (
                         <button

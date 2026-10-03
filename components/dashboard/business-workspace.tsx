@@ -68,6 +68,7 @@ import { RecommendationView } from '@/components/recommendations/recommendation-
 import { DemoTourModal } from '@/components/demo/demo-tour-modal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { RegisterBusinessModal } from '@/components/registration/register-business-modal';
+import { PitchGeneratorModal } from '@/components/pitch/pitch-generator-modal';
 
 type ActiveTab =
   | 'overview'
@@ -119,6 +120,11 @@ export function BusinessWorkspace({
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [targetCreatorForProposal, setTargetCreatorForProposal] = useState<Creator | null>(null);
   const [targetCampaignIdForProposal, setTargetCampaignIdForProposal] = useState<string>('');
+
+  // Pitch Generator modal state
+  const [isPitchModalOpen, setIsPitchModalOpen] = useState(false);
+  const [pitchTargetCreator, setPitchTargetCreator] = useState<Creator | null>(null);
+  const [pitchTargetCampaignId, setPitchTargetCampaignId] = useState<string>('');
 
   // Proposal form state
   const [proposalBudget, setProposalBudget] = useState<number>(30000);
@@ -212,14 +218,25 @@ export function BusinessWorkspace({
     });
   };
 
-  const handleOpenProposal = (creator: Creator, campaignId?: string) => {
+  const handleOpenProposal = (
+    creator: Creator,
+    campaignId?: string,
+    initialMessage?: string
+  ) => {
     setTargetCreatorForProposal(creator);
     setTargetCampaignIdForProposal(campaignId || businessCampaigns[0]?.id || '');
     setProposalBudget(creator.startingRatePKR || 30000);
     setProposalMessage(
-      `Hi ${creator.name}, we love your content and would like to collaborate on an upcoming campaign.`
+      initialMessage ||
+        `Hi ${creator.name}, we love your content and would like to collaborate on an upcoming campaign.`
     );
     setIsProposalModalOpen(true);
+  };
+
+  const handleOpenPitchModal = (creator: Creator, campaignId?: string) => {
+    setPitchTargetCreator(creator);
+    setPitchTargetCampaignId(campaignId || businessCampaigns[0]?.id || '');
+    setIsPitchModalOpen(true);
   };
 
   const handleSendProposalSubmit = async (e: React.FormEvent) => {
@@ -498,6 +515,7 @@ export function BusinessWorkspace({
             creatorId={selectedCreatorIdForProfile}
             onBack={() => setSelectedCreatorIdForProfile(null)}
             onOpenProposalModal={(c) => handleOpenProposal(c)}
+            onGeneratePitch={(c) => handleOpenPitchModal(c)}
             onToggleCompare={handleToggleCompare}
             isCompared={comparedCreatorIds.includes(selectedCreatorIdForProfile)}
           />
@@ -1033,7 +1051,7 @@ export function BusinessWorkspace({
                             <button
                               type="button"
                               onClick={() => handleToggleCompare(c.id)}
-                              className={`px-3.5 py-2 text-sm font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                              className={`px-3 py-2 text-sm font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
                                 isCompared
                                   ? 'bg-indigo-600 text-white'
                                   : 'bg-slate-800 text-slate-300 hover:text-white'
@@ -1041,18 +1059,29 @@ export function BusinessWorkspace({
                               title={isCompared ? 'Remove from comparison' : 'Add to comparison'}
                             >
                               <Scale className="w-4 h-4" />
-                              <span>{isCompared ? 'Compared' : 'Compare Creators'}</span>
+                              <span>{isCompared ? 'Compared' : 'Compare'}</span>
                             </button>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenProposal(c)}
-                            className="w-full py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-sm"
-                          >
-                            <Send className="w-4 h-4" />
-                            <span>Send Proposal</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPitchModal(c)}
+                              className="flex-1 py-2 text-sm font-semibold text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/40 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                            >
+                              <Sparkles className="w-4 h-4 text-indigo-400" />
+                              <span>Generate Pitch</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenProposal(c)}
+                              className="flex-1 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                            >
+                              <Send className="w-4 h-4" />
+                              <span>Send Proposal</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1067,6 +1096,7 @@ export function BusinessWorkspace({
               <RecommendationView
                 onViewCreatorProfile={(id) => setSelectedCreatorIdForProfile(id)}
                 onOpenProposalModal={(c, campId) => handleOpenProposal(c, campId)}
+                onGeneratePitch={(c, campId) => handleOpenPitchModal(c, campId)}
                 onToggleCompare={handleToggleCompare}
                 comparedCreatorIds={comparedCreatorIds}
                 onCreateCampaign={() => setIsWizardOpen(true)}
@@ -1491,6 +1521,22 @@ export function BusinessWorkspace({
         onSuccess={(bizId) => {
           setActiveBusinessId(bizId);
           setIsRegisterBusinessOpen(false);
+        }}
+      />
+
+      {/* AI Pitch Generator Modal */}
+      <PitchGeneratorModal
+        isOpen={isPitchModalOpen}
+        onClose={() => setIsPitchModalOpen(false)}
+        creator={pitchTargetCreator}
+        campaign={
+          businessCampaigns.find((c) => c.id === pitchTargetCampaignId) ||
+          businessCampaigns[0] ||
+          null
+        }
+        businessName={effectiveActiveBusiness?.name || 'SpaceWise'}
+        onContinueToProposal={(c, campId, message) => {
+          handleOpenProposal(c, campId, message);
         }}
       />
     </div>
