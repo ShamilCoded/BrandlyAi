@@ -1,0 +1,8 @@
+{
+  "name": "Brandly.ai",
+  "description": "An AI-powered marketplace connecting brands with relevant influencers and UGC creators based on real campaign fit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
