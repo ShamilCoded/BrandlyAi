@@ -43,18 +43,26 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { NICHE_CATEGORIES, PAKISTANI_CITIES } from '@/lib/config/constants';
+import { RegisterBusinessModal } from '@/components/registration/register-business-modal';
+import { RegisterCreatorModal } from '@/components/registration/register-creator-modal';
 
 interface LandingPageProps {
   onStartDemo: () => void;
   onExploreBusinesses: () => void;
   onExploreCreators: () => void;
+  onRegisterBusinessSuccess?: (businessId: string) => void;
+  onRegisterCreatorSuccess?: (creatorId: string) => void;
 }
 
 export function LandingPage({
   onStartDemo,
   onExploreBusinesses,
   onExploreCreators,
+  onRegisterBusinessSuccess,
+  onRegisterCreatorSuccess,
 }: LandingPageProps) {
+  const [isRegisterBusinessOpen, setIsRegisterBusinessOpen] = React.useState(false);
+  const [isRegisterCreatorOpen, setIsRegisterCreatorOpen] = React.useState(false);
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500/30 overflow-x-hidden">
       {/* Top Navigation Bar */}
@@ -85,7 +93,25 @@ export function LandingPage({
           </a>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setIsRegisterBusinessOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-200 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-lg transition-colors cursor-pointer"
+          >
+            <Building className="w-3.5 h-3.5 text-sky-400" />
+            <span>Register Business</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsRegisterCreatorOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-200 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-lg transition-colors cursor-pointer"
+          >
+            <Users className="w-3.5 h-3.5 text-violet-400" />
+            <span>Join as Creator</span>
+          </button>
+
           <button
             type="button"
             onClick={onStartDemo}
@@ -138,20 +164,36 @@ export function LandingPage({
               </div>
 
               {/* Secondary CTAs */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
                   onClick={onExploreBusinesses}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all cursor-pointer text-center"
+                  className="px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all cursor-pointer text-center"
                 >
                   I&apos;m a Business
                 </button>
                 <button
                   type="button"
                   onClick={onExploreCreators}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all cursor-pointer text-center"
+                  className="px-4 py-2.5 text-sm font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all cursor-pointer text-center"
                 >
                   I&apos;m a Creator
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterBusinessOpen(true)}
+                  className="px-4 py-2.5 text-sm font-semibold text-sky-300 hover:text-sky-200 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/60 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Building className="w-4 h-4 text-sky-400" />
+                  <span>Register Brand</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterCreatorOpen(true)}
+                  className="px-4 py-2.5 text-sm font-semibold text-violet-300 hover:text-violet-200 bg-violet-950/40 hover:bg-violet-900/50 border border-violet-800/60 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Users className="w-4 h-4 text-violet-400" />
+                  <span>Join as Creator</span>
                 </button>
               </div>
 
@@ -747,14 +789,22 @@ export function LandingPage({
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={onExploreBusinesses}
-                  className="w-full sm:w-auto px-7 py-3.5 text-sm font-bold text-white bg-sky-600 hover:bg-sky-500 active:bg-sky-700 rounded-xl transition-all shadow-md shadow-sky-600/20 flex items-center justify-center gap-2 cursor-pointer group"
+                  className="w-full sm:w-auto px-6 py-3.5 text-sm font-bold text-white bg-sky-600 hover:bg-sky-500 active:bg-sky-700 rounded-xl transition-all shadow-md shadow-sky-600/20 flex items-center justify-center gap-2 cursor-pointer group"
                 >
                   <span>Explore as a Business</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterBusinessOpen(true)}
+                  className="w-full sm:w-auto px-6 py-3.5 text-sm font-bold text-sky-200 hover:text-white bg-sky-950/60 hover:bg-sky-900/80 border border-sky-700 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Building className="w-4 h-4 text-sky-400" />
+                  <span>Register Your Brand</span>
                 </button>
               </div>
             </div>
@@ -799,14 +849,22 @@ export function LandingPage({
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={onExploreCreators}
-                  className="w-full sm:w-auto px-7 py-3.5 text-sm font-bold text-white bg-violet-600 hover:bg-violet-500 active:bg-violet-700 rounded-xl transition-all shadow-md shadow-violet-600/20 flex items-center justify-center gap-2 cursor-pointer group"
+                  className="w-full sm:w-auto px-6 py-3.5 text-sm font-bold text-white bg-violet-600 hover:bg-violet-500 active:bg-violet-700 rounded-xl transition-all shadow-md shadow-violet-600/20 flex items-center justify-center gap-2 cursor-pointer group"
                 >
                   <span>Explore as a Creator</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterCreatorOpen(true)}
+                  className="w-full sm:w-auto px-6 py-3.5 text-sm font-bold text-violet-200 hover:text-white bg-violet-950/60 hover:bg-violet-900/80 border border-violet-700 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Users className="w-4 h-4 text-violet-400" />
+                  <span>Register as Creator</span>
                 </button>
               </div>
             </div>
@@ -1135,7 +1193,7 @@ export function LandingPage({
             Let Brandly.ai identify campaign-relevant creators based on your campaign goals, audience, niche, platform, budget, and content needs.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 pt-3">
             {/* Primary CTA */}
             <button
               type="button"
@@ -1146,22 +1204,24 @@ export function LandingPage({
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
 
-            {/* Secondary CTA */}
+            {/* Register Business CTA */}
             <button
               type="button"
-              onClick={onExploreBusinesses}
-              className="w-full sm:w-auto px-5 py-3.5 text-sm font-semibold text-slate-200 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all cursor-pointer text-center"
+              onClick={() => setIsRegisterBusinessOpen(true)}
+              className="w-full sm:w-auto px-6 py-4 text-sm font-semibold text-sky-200 hover:text-white bg-sky-950/60 hover:bg-sky-900/80 border border-sky-700 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              Explore as a Business
+              <Building className="w-4 h-4 text-sky-400" />
+              <span>Register Business</span>
             </button>
 
-            {/* Optional Creator CTA */}
+            {/* Register Creator CTA */}
             <button
               type="button"
-              onClick={onExploreCreators}
-              className="w-full sm:w-auto px-5 py-3.5 text-sm font-semibold text-slate-200 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all cursor-pointer text-center"
+              onClick={() => setIsRegisterCreatorOpen(true)}
+              className="w-full sm:w-auto px-6 py-4 text-sm font-semibold text-violet-200 hover:text-white bg-violet-950/60 hover:bg-violet-900/80 border border-violet-700 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              Explore as a Creator
+              <Users className="w-4 h-4 text-violet-400" />
+              <span>Join as Creator</span>
             </button>
           </div>
 
@@ -1188,6 +1248,25 @@ export function LandingPage({
           </div>
         </div>
       </footer>
+
+      {/* Registration Modals */}
+      <RegisterBusinessModal
+        isOpen={isRegisterBusinessOpen}
+        onClose={() => setIsRegisterBusinessOpen(false)}
+        onSuccess={(bizId) => {
+          setIsRegisterBusinessOpen(false);
+          onRegisterBusinessSuccess?.(bizId);
+        }}
+      />
+
+      <RegisterCreatorModal
+        isOpen={isRegisterCreatorOpen}
+        onClose={() => setIsRegisterCreatorOpen(false)}
+        onSuccess={(creatorId) => {
+          setIsRegisterCreatorOpen(false);
+          onRegisterCreatorSuccess?.(creatorId);
+        }}
+      />
     </div>
   );
 }

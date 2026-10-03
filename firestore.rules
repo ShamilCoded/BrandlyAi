@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // User session and account mapping
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Businesses collection
+    match /businesses/{businessId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Creators collection
+    match /creators/{creatorId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Campaigns collection
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Creator Packages collection (supports both naming patterns)
+    match /creator_packages/{packageId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /creatorPackages/{packageId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Recommendations collection
+    match /recommendations/{recommendationId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Proposals collection
+    match /proposals/{proposalId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Demo Data / Manifest collection
+    match /demo_data/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

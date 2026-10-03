@@ -2,6 +2,8 @@
  * CONFIGURATION / SECRETS LAYER
  */
 
+import firebaseAppletConfig from '@/firebase-applet-config.json';
+
 export interface FirebaseClientConfig {
   apiKey?: string;
   authDomain?: string;
@@ -9,6 +11,7 @@ export interface FirebaseClientConfig {
   storageBucket?: string;
   messagingSenderId?: string;
   appId?: string;
+  firestoreDatabaseId?: string;
 }
 
 export const AppConfig = {
@@ -19,13 +22,15 @@ export const AppConfig = {
   seedVersion: 'seed_manifest_v3',
 
   getFirebaseConfig(): FirebaseClientConfig {
+    const json = (firebaseAppletConfig || {}) as Record<string, string>;
     return {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      apiKey: json.apiKey || process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: json.authDomain || process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: json.projectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: json.storageBucket || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: json.messagingSenderId || process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: json.appId || process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      firestoreDatabaseId: json.firestoreDatabaseId || process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID,
     };
   },
 

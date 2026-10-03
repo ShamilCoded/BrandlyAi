@@ -272,4 +272,55 @@ export class MarketplaceService {
   ): Promise<Business> {
     return businessesRepository.updateDocument(businessId, updates);
   }
+
+  static async registerBusiness(
+    businessData: Omit<Business, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'> & { id?: string }
+  ): Promise<Business> {
+    const now = new Date().toISOString();
+    const slug = (businessData.slug || businessData.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    const id = businessData.id || `biz-${slug || Date.now()}`;
+
+    const business: Business = {
+      ...businessData,
+      id,
+      slug,
+      createdAt: now,
+      updatedAt: now,
+      isDemo: true,
+      demoLabel: 'Registered Business',
+    };
+
+    return businessesRepository.createDocument(business);
+  }
+
+  static async registerCreator(
+    creatorData: Omit<Creator, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'> & { id?: string }
+  ): Promise<Creator> {
+    const now = new Date().toISOString();
+    const handleClean = creatorData.handle.replace(/^@/, '').toLowerCase().replace(/[^a-z0-9._]+/g, '');
+    const id = creatorData.id || `creator-${handleClean || Date.now()}`;
+
+    const creator: Creator = {
+      ...creatorData,
+      id,
+      handle: creatorData.handle.startsWith('@') ? creatorData.handle : `@${creatorData.handle}`,
+      portfolioItems: creatorData.portfolioItems || [],
+      portfolioHighlights: creatorData.portfolioHighlights || [],
+      previousCampaignCategories: creatorData.previousCampaignCategories || [creatorData.primaryNiche],
+      audienceSummary: creatorData.audienceSummary || {
+        topCities: [creatorData.location],
+        ageRange: '18–35',
+        genderSplit: '50% Female · 50% Male',
+      },
+      createdAt: now,
+      updatedAt: now,
+      isDemo: true,
+      demoLabel: 'Registered Creator',
+    };
+
+    return creatorsRepository.createDocument(creator);
+  }
 }

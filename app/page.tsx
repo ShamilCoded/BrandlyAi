@@ -58,6 +58,15 @@ export default function HomePage() {
         setUserRole('creator');
         setViewMode('workspace');
       }}
+      onRegisterBusinessSuccess={() => {
+        setUserRole('business');
+        setInitialTab('overview');
+        setViewMode('workspace');
+      }}
+      onRegisterCreatorSuccess={() => {
+        setUserRole('creator');
+        setViewMode('workspace');
+      }}
     />
   );
 }

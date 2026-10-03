@@ -22,6 +22,7 @@ import {
   normalizeFirebaseError,
   toFirestoreDocument,
 } from '@/lib/firebase/converters';
+import { OperationType, handleFirestoreError } from '@/lib/firebase/errors';
 
 export type FirestoreCollectionName =
   | 'users'
@@ -72,8 +73,6 @@ const memoryStore: Record<FirestoreCollectionName, Map<string, Record<string, un
   proposals: new Map(),
   demo_data: new Map(),
 };
-
-let isFirestoreUnavailable = false;
 
 const STORAGE_PREFIX = 'brandly_firestore_v2_';
 
@@ -157,16 +156,17 @@ export class FirestoreRepository<T extends BaseEntity> {
     store.set(entity.id, payload);
     persistCollectionMap(this.collectionName);
 
-    if (!isFirestoreUnavailable) {
-      const db = getFirestoreDb();
-      if (db) {
-        try {
-          const ref = doc(db, this.collectionName, entity.id);
-          await setDoc(ref, payload);
-        } catch (err) {
-          console.warn(`[Brandly.ai] Cloud Firestore createDocument unavailable for ${this.collectionName}/${entity.id}, using local persistence:`, err);
-          isFirestoreUnavailable = true;
+    const db = getFirestoreDb();
+    if (db) {
+      try {
+        const ref = doc(db, this.collectionName, entity.id);
+        await setDoc(ref, payload);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          handleFirestoreError(err, OperationType.CREATE, `${this.collectionName}/${entity.id}`);
         }
+        console.warn(`[Brandly.ai] Cloud Firestore createDocument note for ${this.collectionName}/${entity.id}:`, err);
       }
     }
 
@@ -181,24 +181,25 @@ export class FirestoreRepository<T extends BaseEntity> {
   async readDocument(id: string): Promise<T | null> {
     if (!id) return null;
 
-    if (!isFirestoreUnavailable) {
-      const db = getFirestoreDb();
-      if (db) {
-        try {
-          const ref = doc(db, this.collectionName, id);
-          const snap = await getDoc(ref);
-          if (snap.exists()) {
-            return fromFirestoreDocument<T>(
-              snap.id,
-              snap.data() as Record<string, unknown>,
-              this.collectionName,
-              this.requiredFields
-            );
-          }
-        } catch (err) {
-          console.warn(`[Brandly.ai] Cloud Firestore readDocument unavailable for ${this.collectionName}/${id}, using local persistence:`, err);
-          isFirestoreUnavailable = true;
+    const db = getFirestoreDb();
+    if (db) {
+      try {
+        const ref = doc(db, this.collectionName, id);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          return fromFirestoreDocument<T>(
+            snap.id,
+            snap.data() as Record<string, unknown>,
+            this.collectionName,
+            this.requiredFields
+          );
         }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          handleFirestoreError(err, OperationType.GET, `${this.collectionName}/${id}`);
+        }
+        console.warn(`[Brandly.ai] Cloud Firestore readDocument note for ${this.collectionName}/${id}:`, err);
       }
     }
 
@@ -232,16 +233,17 @@ export class FirestoreRepository<T extends BaseEntity> {
     store.set(id, payload);
     persistCollectionMap(this.collectionName);
 
-    if (!isFirestoreUnavailable) {
-      const db = getFirestoreDb();
-      if (db) {
-        try {
-          const ref = doc(db, this.collectionName, id);
-          await updateDoc(ref, payload);
-        } catch (err) {
-          console.warn(`[Brandly.ai] Cloud Firestore updateDocument unavailable for ${this.collectionName}/${id}, using local persistence:`, err);
-          isFirestoreUnavailable = true;
+    const db = getFirestoreDb();
+    if (db) {
+      try {
+        const ref = doc(db, this.collectionName, id);
+        await updateDoc(ref, payload);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          handleFirestoreError(err, OperationType.UPDATE, `${this.collectionName}/${id}`);
         }
+        console.warn(`[Brandly.ai] Cloud Firestore updateDocument note for ${this.collectionName}/${id}:`, err);
       }
     }
 
@@ -253,16 +255,17 @@ export class FirestoreRepository<T extends BaseEntity> {
     store.delete(id);
     persistCollectionMap(this.collectionName);
 
-    if (!isFirestoreUnavailable) {
-      const db = getFirestoreDb();
-      if (db) {
-        try {
-          const ref = doc(db, this.collectionName, id);
-          await deleteDoc(ref);
-        } catch (err) {
-          console.warn(`[Brandly.ai] Cloud Firestore deleteDocument unavailable for ${this.collectionName}/${id}:`, err);
-          isFirestoreUnavailable = true;
+    const db = getFirestoreDb();
+    if (db) {
+      try {
+        const ref = doc(db, this.collectionName, id);
+        await deleteDoc(ref);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          handleFirestoreError(err, OperationType.DELETE, `${this.collectionName}/${id}`);
         }
+        console.warn(`[Brandly.ai] Cloud Firestore deleteDocument note for ${this.collectionName}/${id}:`, err);
       }
     }
 
@@ -274,50 +277,51 @@ export class FirestoreRepository<T extends BaseEntity> {
   }
 
   async queryDocuments(options: QueryOptions<T> = {}): Promise<T[]> {
-    if (!isFirestoreUnavailable) {
-      const db = getFirestoreDb();
-      if (db) {
-        try {
-          const constraints: QueryConstraint[] = [];
-          if (options.filters) {
-            for (const f of options.filters) {
-              constraints.push(
-                where(String(f.field), f.operator as WhereFilterOp, f.value)
-              );
-            }
-          }
-          if (options.orderByField) {
+    const db = getFirestoreDb();
+    if (db) {
+      try {
+        const constraints: QueryConstraint[] = [];
+        if (options.filters) {
+          for (const f of options.filters) {
             constraints.push(
-              firestoreOrderBy(String(options.orderByField), options.orderDirection || 'asc')
+              where(String(f.field), f.operator as WhereFilterOp, f.value)
             );
           }
-          if (options.limitCount && options.limitCount > 0) {
-            constraints.push(firestoreLimit(options.limitCount));
-          }
-
-          const q = query(collection(db, this.collectionName), ...constraints);
-          const snap = await getDocs(q);
-          const results: T[] = [];
-          snap.forEach((docSnap) => {
-            try {
-              const item = fromFirestoreDocument<T>(
-                docSnap.id,
-                docSnap.data() as Record<string, unknown>,
-                this.collectionName,
-                this.requiredFields
-              );
-              results.push(item);
-            } catch {
-              // safely skip
-            }
-          });
-          if (results.length > 0) {
-            return results;
-          }
-        } catch (err) {
-          console.warn(`[Brandly.ai] Cloud Firestore queryDocuments unavailable for ${this.collectionName}, using local store:`, err);
-          isFirestoreUnavailable = true;
         }
+        if (options.orderByField) {
+          constraints.push(
+            firestoreOrderBy(String(options.orderByField), options.orderDirection || 'asc')
+          );
+        }
+        if (options.limitCount && options.limitCount > 0) {
+          constraints.push(firestoreLimit(options.limitCount));
+        }
+
+        const q = query(collection(db, this.collectionName), ...constraints);
+        const snap = await getDocs(q);
+        const results: T[] = [];
+        snap.forEach((docSnap) => {
+          try {
+            const item = fromFirestoreDocument<T>(
+              docSnap.id,
+              docSnap.data() as Record<string, unknown>,
+              this.collectionName,
+              this.requiredFields
+            );
+            results.push(item);
+          } catch {
+            // safely skip
+          }
+        });
+        if (results.length > 0) {
+          return results;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          handleFirestoreError(err, OperationType.LIST, this.collectionName);
+        }
+        console.warn(`[Brandly.ai] Cloud Firestore queryDocuments note for ${this.collectionName}:`, err);
       }
     }
 
@@ -399,12 +403,14 @@ export async function executeBatchOperations(
   touchedCollections.forEach((col) => persistCollectionMap(col));
 
   // Mirror to Cloud Firestore if available
-  if (!isFirestoreUnavailable) {
-    const db = getFirestoreDb();
-    if (db) {
+  const db = getFirestoreDb();
+  if (db) {
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < operations.length; i += CHUNK_SIZE) {
+      const chunk = operations.slice(i, i + CHUNK_SIZE);
       try {
         const batch = writeBatch(db);
-        for (const op of operations) {
+        for (const op of chunk) {
           const ref = doc(db, op.collectionName, op.id);
           if (op.type === 'set' && op.data) {
             batch.set(ref, {
@@ -424,8 +430,11 @@ export async function executeBatchOperations(
         }
         await batch.commit();
       } catch (err) {
-        console.warn('[Brandly.ai] Cloud Firestore batch commit unavailable, preserved in local storage:', err);
-        isFirestoreUnavailable = true;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Missing or insufficient permissions') || msg.includes('permission-denied')) {
+          handleFirestoreError(err, OperationType.WRITE, 'batch');
+        }
+        console.warn('[Brandly.ai] Cloud Firestore batch commit note, operations preserved in local storage:', err);
       }
     }
   }

@@ -40,6 +40,7 @@ import {
   DollarSign,
   FileText,
   Layers,
+  UserCheck,
 } from 'lucide-react';
 import { useAppState } from '@/lib/context/app-state-context';
 import {
@@ -50,6 +51,7 @@ import {
   DELIVERABLE_TYPES,
 } from '@/lib/config/constants';
 import { EmptyState } from '@/components/ui/empty-state';
+import { RegisterCreatorModal } from '@/components/registration/register-creator-modal';
 import type {
   Creator,
   CreatorPackage,
@@ -97,6 +99,7 @@ export function CreatorDashboard({
   } = useAppState();
 
   const [activeTab, setActiveTab] = useState<CreatorTab>(initialTab);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   // Proposal detail & negotiation modal
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -207,7 +210,13 @@ export function CreatorDashboard({
             <span className="text-sm font-medium text-slate-300 hidden md:inline">Creator:</span>
             <select
               value={activeCreator?.id || ''}
-              onChange={(e) => setActiveCreatorId(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value === '__register_new__') {
+                  setIsRegisterModalOpen(true);
+                  return;
+                }
+                setActiveCreatorId(e.target.value);
+              }}
               aria-label="Active Creator Selector"
               className="bg-slate-900 border border-slate-700 hover:border-slate-600 text-sm font-semibold text-white px-3.5 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
@@ -216,8 +225,18 @@ export function CreatorDashboard({
                   {c.name} ({c.creatorType} • {c.location})
                 </option>
               ))}
+              <option value="__register_new__">+ Register New Creator...</option>
             </select>
-            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
+            <button
+              type="button"
+              onClick={() => setIsRegisterModalOpen(true)}
+              title="Register a new creator"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-300 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">+ Register Creator</span>
+            </button>
+            <span className="px-2.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
               Demo Creator
             </span>
           </div>
@@ -1370,6 +1389,16 @@ export function CreatorDashboard({
           </div>
         </div>
       )}
+
+      {/* Register Creator Modal */}
+      <RegisterCreatorModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onSuccess={(creatorId) => {
+          setActiveCreatorId(creatorId);
+          setIsRegisterModalOpen(false);
+        }}
+      />
     </div>
   );
 }

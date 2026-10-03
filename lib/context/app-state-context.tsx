@@ -28,7 +28,15 @@ import type {
   Proposal,
   ProposalStatus,
   Recommendation,
+  User,
 } from '@/lib/types/domain';
+import {
+  ensureAuthSession,
+  signOutAuthUser,
+  subscribeToAuthChanges,
+  testFirestoreConnection,
+} from '@/lib/firebase/client';
+import { usersRepository } from '@/lib/repositories/collections';
 
 export type UserRole = 'business' | 'creator';
 
@@ -38,6 +46,9 @@ interface AppStateContextValue {
   manifest: DemoScenario | null;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
+  userSession: User | null;
+  firebaseConnected: boolean;
+  signOutSession: () => Promise<void>;
   businesses: Business[];
   activeBusiness: Business | null;
   setActiveBusinessId: (id: string) => void;
@@ -81,6 +92,14 @@ interface AppStateContextValue {
     }
   ) => Promise<CreatorPackage>;
   deleteCreatorPackage: (packageId: string) => Promise<void>;
+  registerBusiness: (
+    data: Omit<Business, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'> & { id?: string },
+    userEmail?: string
+  ) => Promise<Business>;
+  registerCreator: (
+    data: Omit<Creator, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'> & { id?: string },
+    userEmail?: string
+  ) => Promise<Creator>;
 }
 
 const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
@@ -90,6 +109,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [manifest, setManifest] = useState<DemoScenario | null>(null);
   const [userRole, setUserRole] = useState<UserRole>('business');
+  const [userSession, setUserSession] = useState<User | null>(null);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
 
   const [businesses, setBusinesses] = useState<Business[]>(() => DEMO_BUSINESSES);
   const [activeBusinessId, setActiveBusinessId] = useState<string>(
@@ -135,6 +156,58 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refreshMarketplace(false);
   }, [refreshMarketplace]);
+
+  // Firebase connection and session restoration on app boot
+  useEffect(() => {
+    // 1. Verify Firestore connectivity
+    testFirestoreConnection().then((connected) => {
+      setFirebaseConnected(connected);
+      if (connected) {
+        console.log('[Brandly.ai] Connected to Cloud Firestore database');
+      }
+    });
+
+    // 2. Restore active session from localStorage if present
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('brandly_active_session_v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.role) {
+            setUserRole(parsed.role as UserRole);
+            if (parsed.role === 'business' && parsed.profileId) {
+              setActiveBusinessId(parsed.profileId);
+            } else if (parsed.role === 'creator' && parsed.profileId) {
+              setActiveCreatorId(parsed.profileId);
+            }
+            setUserSession({
+              id: parsed.uid || `user-${parsed.profileId}`,
+              email: parsed.email || 'user@brandly.ai',
+              displayName: parsed.displayName || parsed.role,
+              role: parsed.role,
+              businessId: parsed.role === 'business' ? parsed.profileId : undefined,
+              creatorId: parsed.role === 'creator' ? parsed.profileId : undefined,
+              city: 'Karachi',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isDemo: false,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[Brandly.ai] Session restoration note:', err);
+      }
+    }
+
+    // 3. Listen to Firebase Auth state
+    const unsubscribe = subscribeToAuthChanges((user) => {
+      if (user) {
+        console.log('[Brandly.ai] Firebase Auth user active:', user.uid);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const activeBusiness = useMemo(() => {
     return (
@@ -314,6 +387,109 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     [refreshMarketplace]
   );
 
+  const signOutSession = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('brandly_active_session_v1');
+    }
+    await signOutAuthUser();
+    setUserSession(null);
+    setActiveBusinessId(AppConfig.defaultDemoBusinessId);
+    setActiveCreatorId('creator-shamil-karachi');
+    setUserRole('business');
+  }, []);
+
+  const registerBusiness = useCallback(
+    async (
+      data: Omit<Business, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'> & { id?: string },
+      userEmail?: string
+    ): Promise<Business> => {
+      const authUser = await ensureAuthSession();
+      const created = await MarketplaceService.registerBusiness(data);
+      const uid = authUser?.uid || `user-${created.id}`;
+      const sessionUser: User = {
+        id: uid,
+        email: userEmail || `${created.slug}@brandly.ai`,
+        displayName: created.name,
+        role: 'business',
+        businessId: created.id,
+        city: created.headquarters,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDemo: false,
+      };
+      try {
+        await usersRepository.createDocument(sessionUser);
+      } catch (err) {
+        console.warn('[Brandly.ai] usersRepository create note:', err);
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          'brandly_active_session_v1',
+          JSON.stringify({
+            uid,
+            role: 'business',
+            profileId: created.id,
+            displayName: created.name,
+            email: sessionUser.email,
+          })
+        );
+      }
+      setUserSession(sessionUser);
+      setBusinesses((prev) => [created, ...prev.filter((b) => b.id !== created.id)]);
+      setActiveBusinessId(created.id);
+      setUserRole('business');
+      await refreshMarketplace(false);
+      return created;
+    },
+    [refreshMarketplace]
+  );
+
+  const registerCreator = useCallback(
+    async (
+      data: Omit<Creator, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'> & { id?: string },
+      userEmail?: string
+    ): Promise<Creator> => {
+      const authUser = await ensureAuthSession();
+      const created = await MarketplaceService.registerCreator(data);
+      const uid = authUser?.uid || `user-${created.id}`;
+      const sessionUser: User = {
+        id: uid,
+        email: userEmail || `${created.handle.replace(/^@/, '')}@creators.brandly.ai`,
+        displayName: created.name,
+        role: 'creator',
+        creatorId: created.id,
+        city: created.location,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDemo: false,
+      };
+      try {
+        await usersRepository.createDocument(sessionUser);
+      } catch (err) {
+        console.warn('[Brandly.ai] usersRepository create note:', err);
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          'brandly_active_session_v1',
+          JSON.stringify({
+            uid,
+            role: 'creator',
+            profileId: created.id,
+            displayName: created.name,
+            email: sessionUser.email,
+          })
+        );
+      }
+      setUserSession(sessionUser);
+      setCreators((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
+      setActiveCreatorId(created.id);
+      setUserRole('creator');
+      await refreshMarketplace(false);
+      return created;
+    },
+    [refreshMarketplace]
+  );
+
   const value = useMemo<AppStateContextValue>(
     () => ({
       isLoading,
@@ -321,6 +497,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       manifest,
       userRole,
       setUserRole,
+      userSession,
+      firebaseConnected,
+      signOutSession,
       businesses,
       activeBusiness,
       setActiveBusinessId,
@@ -348,12 +527,17 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       updateCreatorProfile,
       saveCreatorPackage,
       deleteCreatorPackage,
+      registerBusiness,
+      registerCreator,
     }),
     [
       isLoading,
       error,
       manifest,
       userRole,
+      userSession,
+      firebaseConnected,
+      signOutSession,
       businesses,
       activeBusiness,
       creators,
@@ -379,6 +563,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       updateCreatorProfile,
       saveCreatorPackage,
       deleteCreatorPackage,
+      registerBusiness,
+      registerCreator,
     ]
   );
 

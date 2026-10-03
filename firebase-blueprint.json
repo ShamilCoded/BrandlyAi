@@ -1,0 +1,224 @@
+{
+  "entities": {
+    "UserSession": {
+      "title": "UserSession",
+      "description": "Authenticated user profile and role assignment for Brandly.ai marketplace",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User contact or authentication email" },
+        "displayName": { "type": "string", "description": "Display name of the user or brand representative" },
+        "role": { "type": "string", "enum": ["business", "creator"], "description": "Primary role of user in marketplace" },
+        "profileId": { "type": "string", "description": "Associated businessId or creatorId" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "ISO timestamp of registration" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "ISO timestamp of last update" }
+      },
+      "required": ["uid", "role", "profileId", "createdAt", "updatedAt"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Business or brand profile on the Brandly.ai two-sided marketplace",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique business identifier (biz-...)" },
+        "ownerUid": { "type": "string", "description": "Firebase Auth UID of the owning user" },
+        "name": { "type": "string", "description": "Brand or company name" },
+        "slug": { "type": "string", "description": "URL-friendly business slug" },
+        "category": { "type": "string", "description": "Business category (e.g. Technology, Food)" },
+        "industry": { "type": "string", "description": "Specific industry vertical" },
+        "headquarters": { "type": "string", "description": "Primary Pakistani city headquarters" },
+        "targetMarkets": { "type": "array", "description": "Target Pakistani cities for campaigns" },
+        "website": { "type": "string", "description": "Website or online store URL" },
+        "flagshipProducts": { "type": "array", "description": "Key products or services" },
+        "preferredPlatforms": { "type": "array", "description": "Target social media platforms" },
+        "typicalBudgetPKR": { "type": "number", "description": "Typical campaign budget in PKR" },
+        "contactPerson": { "type": "string", "description": "Representative contact name" },
+        "contactRole": { "type": "string", "description": "Representative designation or role" },
+        "description": { "type": "string", "description": "Company overview and marketing goals" },
+        "isDemo": { "type": "boolean", "description": "Whether this record is a demo seed" },
+        "demoLabel": { "type": "string", "description": "Label indicating demo/registered status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "name", "category", "headquarters", "createdAt", "updatedAt"]
+    },
+    "Creator": {
+      "title": "Creator",
+      "description": "Influencer or UGC creator profile registered on Brandly.ai",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique creator identifier (creator-...)" },
+        "ownerUid": { "type": "string", "description": "Firebase Auth UID of the owning creator" },
+        "name": { "type": "string", "description": "Creator display name" },
+        "handle": { "type": "string", "description": "Primary social handle (@...)" },
+        "creatorType": { "type": "string", "enum": ["Influencer", "UGC Creator", "Micro Influencer", "Content Creator"], "description": "Creator archetype" },
+        "location": { "type": "string", "description": "City in Pakistan" },
+        "followers": { "type": "number", "description": "Audience follower count (optional for UGC creators)" },
+        "averageViews": { "type": "number", "description": "Average view velocity on video content" },
+        "engagementRate": { "type": "number", "description": "Average engagement percentage" },
+        "primaryNiche": { "type": "string", "description": "Primary content specialization" },
+        "secondaryNiches": { "type": "array", "description": "Secondary content topics" },
+        "platforms": { "type": "array", "description": "Active social media channels" },
+        "languages": { "type": "array", "description": "Delivery languages" },
+        "services": { "type": "array", "description": "Services offered" },
+        "startingRatePKR": { "type": "number", "description": "Base rate in PKR for deliverables" },
+        "turnaroundDays": { "type": "number", "description": "Standard delivery window in days" },
+        "availability": { "type": "string", "description": "Current booking status" },
+        "bio": { "type": "string", "description": "Creator bio and pitch" },
+        "contentStyle": { "type": "array", "description": "Visual style tags and hooks" },
+        "isDemo": { "type": "boolean", "description": "Whether this record is a demo seed" },
+        "demoLabel": { "type": "string", "description": "Label indicating demo/registered status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "name", "handle", "creatorType", "location", "primaryNiche", "startingRatePKR", "createdAt", "updatedAt"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Brand campaign brief for matching creators on Brandly.ai",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique campaign identifier (camp-...)" },
+        "businessId": { "type": "string", "description": "Foreign key to business" },
+        "businessName": { "type": "string", "description": "Display name of creating business" },
+        "title": { "type": "string", "description": "Campaign title" },
+        "category": { "type": "string", "description": "Product category" },
+        "productOrService": { "type": "string", "description": "Product or service being promoted" },
+        "objective": { "type": "string", "description": "Campaign business objective" },
+        "description": { "type": "string", "description": "Campaign brief and guidelines" },
+        "budget": { "type": "number", "description": "Allocated campaign budget" },
+        "currency": { "type": "string", "description": "Currency code (PKR)" },
+        "audienceAgeRange": { "type": "string", "description": "Target audience age demographic" },
+        "audienceGender": { "type": "string", "description": "Target audience gender" },
+        "targetLocations": { "type": "array", "description": "Geographic campaign targets" },
+        "audienceInterests": { "type": "array", "description": "Target interest tags" },
+        "platforms": { "type": "array", "description": "Required distribution platforms" },
+        "creatorTypes": { "type": "array", "description": "Allowed creator archetypes" },
+        "preferredNiches": { "type": "array", "description": "Target creator niches" },
+        "minimumFollowers": { "type": "number", "description": "Minimum follower floor (0 for UGC)" },
+        "languages": { "type": "array", "description": "Campaign languages" },
+        "creatorLocations": { "type": "array", "description": "Creator geographic constraints" },
+        "requiredServices": { "type": "array", "description": "Required creator services" },
+        "deliverables": { "type": "array", "description": "Final deliverable assets" },
+        "startDate": { "type": "string", "format": "date", "description": "Start date" },
+        "endDate": { "type": "string", "format": "date", "description": "End date" },
+        "applicationDeadline": { "type": "string", "format": "date", "description": "Proposal deadline" },
+        "status": { "type": "string", "enum": ["draft", "active", "matching", "paused", "completed"], "description": "Lifecycle status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "businessId", "title", "budget", "currency", "status", "createdAt", "updatedAt"]
+    },
+    "CreatorPackage": {
+      "title": "CreatorPackage",
+      "description": "Standardized collaboration package offered by a creator",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique package identifier (pkg-...)" },
+        "creatorId": { "type": "string", "description": "Foreign key to creator" },
+        "creatorName": { "type": "string", "description": "Display name of creator" },
+        "title": { "type": "string", "description": "Package title" },
+        "platform": { "type": "string", "description": "Primary platform" },
+        "pricePKR": { "type": "number", "description": "Package price in PKR" },
+        "currency": { "type": "string", "description": "Currency code (PKR)" },
+        "deliveryDays": { "type": "number", "description": "Delivery turnaround days" },
+        "deliverables": { "type": "array", "description": "Included deliverables" },
+        "description": { "type": "string", "description": "Package scope description" },
+        "revisionsIncluded": { "type": "number", "description": "Allowed revision rounds" },
+        "usageRightsDays": { "type": "number", "description": "Paid advertising usage rights days" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "creatorId", "title", "pricePKR", "deliveryDays", "deliverables", "createdAt", "updatedAt"]
+    },
+    "Recommendation": {
+      "title": "Recommendation",
+      "description": "AI-generated recommendation linking a creator to a campaign",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique recommendation identifier (rec-...)" },
+        "campaignId": { "type": "string", "description": "Foreign key to campaign" },
+        "campaignTitle": { "type": "string", "description": "Campaign title" },
+        "businessId": { "type": "string", "description": "Foreign key to business" },
+        "creatorId": { "type": "string", "description": "Foreign key to creator" },
+        "creatorName": { "type": "string", "description": "Creator name" },
+        "creatorHandle": { "type": "string", "description": "Creator handle" },
+        "creatorType": { "type": "string", "description": "Creator type" },
+        "creatorLocation": { "type": "string", "description": "Creator city" },
+        "primaryNiche": { "type": "string", "description": "Primary niche" },
+        "platforms": { "type": "array", "description": "Active platforms" },
+        "followers": { "type": "number", "description": "Follower count" },
+        "averageViews": { "type": "number", "description": "Average views" },
+        "engagementRate": { "type": "number", "description": "Engagement percentage" },
+        "estimatedRatePKR": { "type": "number", "description": "Estimated rate in PKR" },
+        "matchScore": { "type": "number", "description": "AI match fit score (0-100)" },
+        "whyThisCreator": { "type": "string", "description": "Concise factual reason for match" },
+        "whyThisCreatorBullets": { "type": "array", "description": "Specific matching points" },
+        "strengths": { "type": "array", "description": "Observed creative strengths" },
+        "considerations": { "type": "array", "description": "Practical considerations" },
+        "matchedCriteria": { "type": "array", "description": "Specific criteria that matched" },
+        "services": { "type": "array", "description": "Services offered" },
+        "status": { "type": "string", "enum": ["recommended", "shortlisted", "contacted", "rejected"], "description": "Recommendation status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "campaignId", "businessId", "creatorId", "matchScore", "createdAt", "updatedAt"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Brand proposal sent to a creator for a specific campaign",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique proposal identifier (prop-...)" },
+        "campaignId": { "type": "string", "description": "Foreign key to campaign" },
+        "campaignTitle": { "type": "string", "description": "Campaign title" },
+        "businessId": { "type": "string", "description": "Foreign key to business" },
+        "businessName": { "type": "string", "description": "Business display name" },
+        "creatorId": { "type": "string", "description": "Foreign key to creator" },
+        "creatorName": { "type": "string", "description": "Creator display name" },
+        "creatorType": { "type": "string", "description": "Creator archetype" },
+        "packageId": { "type": "string", "description": "Optional selected package ID" },
+        "proposedDeliverables": { "type": "array", "description": "Proposed deliverables" },
+        "offeredBudgetPKR": { "type": "number", "description": "Offered fee in PKR" },
+        "currency": { "type": "string", "description": "Currency code (PKR)" },
+        "timelineDays": { "type": "number", "description": "Proposed timeline in days" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined", "shortlisted", "negotiating"], "description": "Proposal status" },
+        "message": { "type": "string", "description": "Message from business" },
+        "creatorNote": { "type": "string", "description": "Response or negotiation note from creator" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "campaignId", "businessId", "creatorId", "offeredBudgetPKR", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserSession",
+      "description": "User session, credentials, and role mapping"
+    },
+    "/businesses/{businessId}": {
+      "schema": "Business",
+      "description": "Registered businesses and brands"
+    },
+    "/creators/{creatorId}": {
+      "schema": "Creator",
+      "description": "Registered influencers and UGC creators"
+    },
+    "/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Campaigns created by businesses"
+    },
+    "/creatorPackages/{packageId}": {
+      "schema": "CreatorPackage",
+      "description": "Deliverable packages created by creators"
+    },
+    "/recommendations/{recommendationId}": {
+      "schema": "Recommendation",
+      "description": "AI-generated recommendations for campaigns"
+    },
+    "/proposals/{proposalId}": {
+      "schema": "Proposal",
+      "description": "Collaboration proposals between businesses and creators"
+    }
+  }
+}

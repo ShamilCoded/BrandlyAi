@@ -67,6 +67,7 @@ import { CreatorComparisonView } from '@/components/creators/creator-comparison-
 import { RecommendationView } from '@/components/recommendations/recommendation-view';
 import { DemoTourModal } from '@/components/demo/demo-tour-modal';
 import { EmptyState } from '@/components/ui/empty-state';
+import { RegisterBusinessModal } from '@/components/registration/register-business-modal';
 
 type ActiveTab =
   | 'overview'
@@ -111,6 +112,7 @@ export function BusinessWorkspace({
 
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isRegisterBusinessOpen, setIsRegisterBusinessOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [selectedCreatorIdForProfile, setSelectedCreatorIdForProfile] = useState<string | null>(null);
   const [comparedCreatorIds, setComparedCreatorIds] = useState<string[]>([]);
@@ -289,7 +291,13 @@ export function BusinessWorkspace({
             <span className="text-sm font-medium text-slate-300 hidden md:inline">Business:</span>
             <select
               value={effectiveActiveBusiness?.id || ''}
-              onChange={(e) => setActiveBusinessId(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value === '__register_new__') {
+                  setIsRegisterBusinessOpen(true);
+                  return;
+                }
+                setActiveBusinessId(e.target.value);
+              }}
               aria-label="Active Business Selector"
               className="bg-slate-900 border border-slate-700 hover:border-slate-600 text-sm font-semibold text-white px-3.5 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
@@ -298,7 +306,17 @@ export function BusinessWorkspace({
                   {b.name} ({b.category})
                 </option>
               ))}
+              <option value="__register_new__">+ Register New Business...</option>
             </select>
+            <button
+              type="button"
+              onClick={() => setIsRegisterBusinessOpen(true)}
+              title="Register a new business"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <Building className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">+ Register Business</span>
+            </button>
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300">
               Demo
             </span>
@@ -496,13 +514,13 @@ export function BusinessWorkspace({
                         Workspace Active
                       </span>
                       <span className="text-slate-600">•</span>
-                      <span className="text-sm text-slate-300">{activeBusiness?.headquarters}, Pakistan</span>
+                      <span className="text-sm text-slate-300">{effectiveActiveBusiness?.headquarters}, Pakistan</span>
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-['Syne',sans-serif]">
-                      Welcome back, {activeBusiness?.name}
+                      Welcome back, {effectiveActiveBusiness?.name}
                     </h1>
                     <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
-                      {activeBusiness?.description}
+                      {effectiveActiveBusiness?.description}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -1182,14 +1200,16 @@ export function BusinessWorkspace({
                   <button
                     type="button"
                     onClick={() => {
-                      setProfileForm({
-                        name: activeBusiness.name,
-                        category: activeBusiness.category,
-                        headquarters: activeBusiness.headquarters,
-                        website: activeBusiness.website || '',
-                        description: activeBusiness.description || '',
-                        contactPerson: activeBusiness.contactPerson || '',
-                      });
+                      if (effectiveActiveBusiness) {
+                        setProfileForm({
+                          name: effectiveActiveBusiness.name,
+                          category: effectiveActiveBusiness.category,
+                          headquarters: effectiveActiveBusiness.headquarters,
+                          website: effectiveActiveBusiness.website || '',
+                          description: effectiveActiveBusiness.description || '',
+                          contactPerson: effectiveActiveBusiness.contactPerson || '',
+                        });
+                      }
                       setIsEditingProfile(!isEditingProfile);
                     }}
                     className="px-4 py-2 text-sm font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer transition-colors"
@@ -1298,28 +1318,28 @@ export function BusinessWorkspace({
                   <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-lg">
-                        {activeBusiness.name.slice(0, 2).toUpperCase()}
+                        {effectiveActiveBusiness?.name.slice(0, 2).toUpperCase() || 'BZ'}
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-white">{activeBusiness.name}</h3>
+                        <h3 className="text-lg font-bold text-white">{effectiveActiveBusiness?.name}</h3>
                         <p className="text-sm text-slate-300">
-                          {activeBusiness.category} • {activeBusiness.headquarters}, Pakistan
+                          {effectiveActiveBusiness?.category} • {effectiveActiveBusiness?.headquarters}, Pakistan
                         </p>
                       </div>
                     </div>
 
                     <p className="text-sm text-slate-300 leading-relaxed">
-                      {activeBusiness.description}
+                      {effectiveActiveBusiness?.description}
                     </p>
 
                     <div className="pt-3 border-t border-slate-800 grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-slate-400 block text-xs">Website</span>
-                        <span className="text-slate-200 font-medium">{activeBusiness.website || 'Not specified'}</span>
+                        <span className="text-slate-200 font-medium">{effectiveActiveBusiness?.website || 'Not specified'}</span>
                       </div>
                       <div>
                         <span className="text-slate-400 block text-xs">Contact</span>
-                        <span className="text-slate-200 font-medium">{activeBusiness.contactPerson || 'Not specified'}</span>
+                        <span className="text-slate-200 font-medium">{effectiveActiveBusiness?.contactPerson || 'Not specified'}</span>
                       </div>
                     </div>
                   </div>
@@ -1461,6 +1481,16 @@ export function BusinessWorkspace({
         onNavigateToTab={(tab) => {
           setActiveTab(tab as any);
           setSelectedCreatorIdForProfile(null);
+        }}
+      />
+
+      {/* Register Business Modal */}
+      <RegisterBusinessModal
+        isOpen={isRegisterBusinessOpen}
+        onClose={() => setIsRegisterBusinessOpen(false)}
+        onSuccess={(bizId) => {
+          setActiveBusinessId(bizId);
+          setIsRegisterBusinessOpen(false);
         }}
       />
     </div>
