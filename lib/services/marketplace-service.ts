@@ -25,6 +25,7 @@ import type {
   DemoScenario,
   NicheCategory,
   OrchestrationResult,
+  OrchestratorProgressEvent,
   PakistaniCity,
   Proposal,
   ProposalStatus,
@@ -172,9 +173,10 @@ export class MarketplaceService {
    * Primary service for Module 9, 10: Runs the complete Orchestrator Agent workflow
    */
   static async findCreatorRecommendations(
-    campaignId: string
+    campaignId: string,
+    onProgress?: (event: OrchestratorProgressEvent) => void
   ): Promise<OrchestrationResult> {
-    return OrchestratorAgent.findCreatorRecommendations(campaignId);
+    return OrchestratorAgent.findCreatorRecommendations(campaignId, onProgress);
   }
 
   static async getCreatorDetails(

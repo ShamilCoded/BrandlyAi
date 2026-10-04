@@ -347,6 +347,31 @@ export type OrchestratorStage =
   | 'completed'
   | 'failed';
 
+export type AgentId =
+  | 'campaign_agent'
+  | 'creator_intelligence_agent'
+  | 'matching_agent'
+  | 'orchestrator_agent';
+
+export type AgentStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface AgentActivityStep {
+  agentId: AgentId;
+  name: string;
+  title: string;
+  status: AgentStatus;
+  description: string;
+  detail?: string;
+  timestamp?: string;
+  durationMs?: number;
+}
+
+export interface OrchestratorProgressEvent {
+  currentAgent: AgentId;
+  step: AgentActivityStep;
+  steps: AgentActivityStep[];
+}
+
 export interface OrchestrationLog {
   timestamp: string;
   stage: string;
@@ -363,4 +388,5 @@ export interface OrchestrationResult {
   completedAt: string;
   status: 'succeeded' | 'empty' | 'failed';
   statusMessage: string;
+  agentSteps?: AgentActivityStep[];
 }

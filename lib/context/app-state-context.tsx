@@ -25,6 +25,7 @@ import type {
   CreatorPackage,
   DemoScenario,
   OrchestrationResult,
+  OrchestratorProgressEvent,
   Proposal,
   ProposalStatus,
   Recommendation,
@@ -70,7 +71,10 @@ interface AppStateContextValue {
   saveCampaign: (
     data: Omit<Campaign, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
   ) => Promise<Campaign>;
-  runMatchingOrchestration: (campaignId: string) => Promise<OrchestrationResult>;
+  runMatchingOrchestration: (
+    campaignId: string,
+    onProgress?: (event: OrchestratorProgressEvent) => void
+  ) => Promise<OrchestrationResult>;
   createProposal: (
     payload: Omit<Proposal, 'id' | 'createdAt' | 'updatedAt' | 'isDemo' | 'demoLabel'>
   ) => Promise<Proposal>;
@@ -310,8 +314,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   );
 
   const runMatchingOrchestration = useCallback(
-    async (campaignId: string): Promise<OrchestrationResult> => {
-      const result = await MarketplaceService.findCreatorRecommendations(campaignId);
+    async (
+      campaignId: string,
+      onProgress?: (event: OrchestratorProgressEvent) => void
+    ): Promise<OrchestrationResult> => {
+      const result = await MarketplaceService.findCreatorRecommendations(
+        campaignId,
+        onProgress
+      );
       await refreshMarketplace(false);
       return result;
     },

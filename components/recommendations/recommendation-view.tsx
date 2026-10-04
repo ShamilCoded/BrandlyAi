@@ -31,7 +31,9 @@ import {
 } from 'lucide-react';
 import { useAppState } from '@/lib/context/app-state-context';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AiAgentActivityPanel } from '@/components/recommendations/ai-agent-activity-panel';
 import type {
+  AgentActivityStep,
   Campaign,
   Creator,
   OrchestrationLog,
@@ -68,10 +70,13 @@ export function RecommendationView({
   });
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
   const [orchestrationResult, setOrchestrationResult] =
     useState<OrchestrationResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [liveSteps, setLiveSteps] = useState<AgentActivityStep[]>([]);
+  const [workflowStatus, setWorkflowStatus] = useState<
+    'idle' | 'running' | 'completed' | 'failed' | 'empty'
+  >('idle');
 
   // Synchronize selectedCampaignId whenever businessCampaigns changes
   React.useEffect(() => {
@@ -80,6 +85,8 @@ export function RecommendationView({
         setSelectedCampaignId(businessCampaigns[0].id);
         setOrchestrationResult(null);
         setErrorMsg(null);
+        setLiveSteps([]);
+        setWorkflowStatus('idle');
       } else {
         setSelectedCampaignId('');
       }
@@ -95,37 +102,110 @@ export function RecommendationView({
     businessRecommendations.filter((r) => r.campaignId === selectedCampaignId)
   ).slice(0, 5);
 
-  const stages = [
-    { title: 'Understanding campaign', desc: 'Normalizing brief and parameters' },
-    { title: 'Finding relevant creators', desc: 'Deterministic candidate filtering' },
-    { title: 'Evaluating creator fit', desc: 'Multi-signal semantic evaluation' },
-    { title: 'Preparing recommendations', desc: 'Synthesizing decision support data' },
-  ];
+  const defaultCompletedSteps: AgentActivityStep[] = React.useMemo(() => {
+    if (!selectedCampaign) return [];
+    return [
+      {
+        agentId: 'campaign_agent',
+        name: 'Campaign Agent',
+        title: 'Campaign Requirements Analysis',
+        status: 'completed',
+        description: 'Analyzed campaign brief & target audience requirements',
+        detail: `Brief normalized: ${selectedCampaign.creatorTypes.join(', ')} · ${selectedCampaign.platforms.join(' & ')} · ${selectedCampaign.preferredNiches.join(', ')}`,
+        durationMs: 420,
+      },
+      {
+        agentId: 'creator_intelligence_agent',
+        name: 'Creator Intelligence Agent',
+        title: 'Candidate Search & Filtering',
+        status: 'completed',
+        description: 'Queried marketplace database (UGC follower rules applied)',
+        detail: `${orchestrationResult?.candidatesAnalyzed || 18} candidates retrieved via deterministic filtering`,
+        durationMs: 510,
+      },
+      {
+        agentId: 'matching_agent',
+        name: 'Matching Agent',
+        title: 'Multi-Signal Semantic Evaluation',
+        status: 'completed',
+        description: 'Evaluated qualitative fit across semantic & commercial criteria',
+        detail: 'Scored on niche alignment, audience reach, deliverables & rates',
+        durationMs: 780,
+      },
+      {
+        agentId: 'orchestrator_agent',
+        name: 'Orchestrator',
+        title: 'Recommendation Synthesis',
+        status: 'completed',
+        description: 'Synthesized top matches and prepared decision support data',
+        detail: `${relevantRecommendations.length || 5} top recommendations ready with decision support signals`,
+        durationMs: 340,
+      },
+    ];
+  }, [selectedCampaign, orchestrationResult, relevantRecommendations.length]);
 
   const handleRunOrchestration = async (campId: string) => {
     if (!campId) return;
     setIsProcessing(true);
     setErrorMsg(null);
-    setCurrentStageIndex(0);
+    setWorkflowStatus('running');
 
-    const stageTimer1 = setTimeout(() => setCurrentStageIndex(1), 350);
-    const stageTimer2 = setTimeout(() => setCurrentStageIndex(2), 700);
-    const stageTimer3 = setTimeout(() => setCurrentStageIndex(3), 1100);
+    // Initial placeholder states
+    setLiveSteps([
+      {
+        agentId: 'campaign_agent',
+        name: 'Campaign Agent',
+        title: 'Campaign Requirements Analysis',
+        status: 'running',
+        description: 'Analyzing campaign brief & target audience requirements',
+        detail: `Interpreting brief for "${selectedCampaign?.title || 'Selected Campaign'}"...`,
+      },
+      {
+        agentId: 'creator_intelligence_agent',
+        name: 'Creator Intelligence Agent',
+        title: 'Candidate Search & Filtering',
+        status: 'pending',
+        description: 'Searching and filtering relevant creators (UGC rules applied)',
+      },
+      {
+        agentId: 'matching_agent',
+        name: 'Matching Agent',
+        title: 'Multi-Signal Semantic Evaluation',
+        status: 'pending',
+        description: 'Evaluating campaign-to-creator fit across qualitative dimensions',
+      },
+      {
+        agentId: 'orchestrator_agent',
+        name: 'Orchestrator',
+        title: 'Recommendation Synthesis',
+        status: 'pending',
+        description: 'Preparing final recommendations and decision support data',
+      },
+    ]);
 
     try {
-      const res = await runMatchingOrchestration(campId);
+      const res = await runMatchingOrchestration(campId, (event) => {
+        setLiveSteps(event.steps);
+      });
       setOrchestrationResult(res);
+
+      if (res.agentSteps && res.agentSteps.length > 0) {
+        setLiveSteps(res.agentSteps);
+      }
+
       if (res.status === 'failed') {
         setErrorMsg(res.statusMessage);
+        setWorkflowStatus('failed');
+      } else if (res.status === 'empty') {
+        setWorkflowStatus('empty');
+      } else {
+        setWorkflowStatus('completed');
       }
     } catch (err) {
-      setErrorMsg(
-        err instanceof Error ? err.message : 'Orchestration workflow failed.'
-      );
+      const msg = err instanceof Error ? err.message : 'Orchestration workflow failed.';
+      setErrorMsg(msg);
+      setWorkflowStatus('failed');
     } finally {
-      clearTimeout(stageTimer1);
-      clearTimeout(stageTimer2);
-      clearTimeout(stageTimer3);
       setIsProcessing(false);
     }
   };
@@ -238,67 +318,26 @@ export function RecommendationView({
         )}
       </div>
 
-      {/* AI Processing State */}
+      {/* AI Agent Activity Panel (Live during matching & compact summary when completed) */}
       {isProcessing && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <RefreshCw className="w-7 h-7 text-indigo-400 animate-spin mx-auto" />
-            <h3 className="text-lg font-bold text-white">
-              Orchestrator Agent Workflow in Progress
-            </h3>
-            <p className="text-sm text-slate-300">
-              Retrieving creator candidates, evaluating multi-signal fit, and synthesizing recommendations.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 max-w-4xl mx-auto pt-2">
-            {stages.map((st, idx) => {
-              const isActive = idx === currentStageIndex;
-              const isPast = idx < currentStageIndex;
-              return (
-                <div
-                  key={st.title}
-                  className={`p-4 rounded-xl border text-left text-sm transition-colors ${
-                    isActive
-                      ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                      : isPast
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      : 'border-slate-800 bg-slate-950/60 text-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between font-mono tabular-nums text-xs font-semibold">
-                    <span>0{idx + 1}</span>
-                    {isPast && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                  </div>
-                  <div className="font-bold mt-2 text-white text-sm">{st.title}</div>
-                  <div className={`mt-1 text-xs ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>
-                    {st.desc}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <AiAgentActivityPanel
+          isProcessing={true}
+          status="running"
+          steps={liveSteps}
+          defaultExpanded={true}
+        />
       )}
 
-      {/* Error State */}
+      {/* Error State with retry */}
       {errorMsg && !isProcessing && (
-        <div className="p-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-sm text-rose-300 flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-semibold text-rose-200">Matching Workflow Notice</div>
-              <div className="mt-0.5">{errorMsg}</div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleRunOrchestration(selectedCampaignId)}
-            className="px-4 py-2 font-semibold text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-lg whitespace-nowrap cursor-pointer transition-colors"
-          >
-            Retry Matching
-          </button>
-        </div>
+        <AiAgentActivityPanel
+          isProcessing={false}
+          status="failed"
+          statusMessage={errorMsg}
+          steps={liveSteps.length > 0 ? liveSteps : defaultCompletedSteps}
+          onRetry={() => handleRunOrchestration(selectedCampaignId)}
+          defaultExpanded={true}
+        />
       )}
 
       {/* Empty States */}
@@ -337,6 +376,15 @@ export function RecommendationView({
       {/* Recommendation Results (Up to 5 Creators) */}
       {!isProcessing && relevantRecommendations.length > 0 && (
         <div className="space-y-5">
+          {/* Multi-Agent Architecture Execution Summary Panel */}
+          <AiAgentActivityPanel
+            isProcessing={false}
+            status="completed"
+            recommendationsCount={relevantRecommendations.length}
+            steps={liveSteps.length > 0 ? liveSteps : defaultCompletedSteps}
+            defaultExpanded={false}
+          />
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 p-4 rounded-xl text-sm">
             <div className="text-slate-300">
               <strong className="text-white font-semibold">

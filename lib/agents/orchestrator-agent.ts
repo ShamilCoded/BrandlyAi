@@ -27,19 +27,24 @@ import { buildNormalizedCampaignSpec } from '@/lib/agents/campaign-agent';
 import { CreatorIntelligenceAgent } from '@/lib/agents/creator-intelligence-agent';
 import { MatchingAgent } from '@/lib/agents/matching-agent';
 import type {
+  AgentActivityStep,
+  AgentId,
+  AgentStatus,
   Campaign,
   NormalizedCampaignSpec,
   OrchestrationLog,
   OrchestrationResult,
+  OrchestratorProgressEvent,
   Recommendation,
 } from '@/lib/types/domain';
 
 export class OrchestratorAgent {
   /**
-   * Primary Application Service: findCreatorRecommendations(campaignId)
+   * Primary Application Service: findCreatorRecommendations(campaignId, onProgress)
    */
   static async findCreatorRecommendations(
-    campaignId: string
+    campaignId: string,
+    onProgress?: (event: OrchestratorProgressEvent) => void
   ): Promise<OrchestrationResult> {
     const logs: OrchestrationLog[] = [];
     const addLog = (stage: string, message: string) => {
@@ -50,11 +55,66 @@ export class OrchestratorAgent {
       });
     };
 
+    const steps: AgentActivityStep[] = [
+      {
+        agentId: 'campaign_agent',
+        name: 'Campaign Agent',
+        title: 'Campaign Requirements Analysis',
+        status: 'pending',
+        description: 'Analyzing campaign brief & normalizing target criteria',
+      },
+      {
+        agentId: 'creator_intelligence_agent',
+        name: 'Creator Intelligence Agent',
+        title: 'Candidate Search & Filtering',
+        status: 'pending',
+        description: 'Searching and filtering relevant creators (UGC rules applied)',
+      },
+      {
+        agentId: 'matching_agent',
+        name: 'Matching Agent',
+        title: 'Multi-Signal Semantic Evaluation',
+        status: 'pending',
+        description: 'Evaluating campaign-to-creator fit across qualitative dimensions',
+      },
+      {
+        agentId: 'orchestrator_agent',
+        name: 'Orchestrator',
+        title: 'Recommendation Synthesis',
+        status: 'pending',
+        description: 'Preparing final recommendations and decision support data',
+      },
+    ];
+
+    const emitStep = (
+      agentId: AgentId,
+      status: AgentStatus,
+      detail?: string,
+      durationMs?: number
+    ) => {
+      const idx = steps.findIndex((s) => s.agentId === agentId);
+      if (idx !== -1) {
+        steps[idx] = {
+          ...steps[idx],
+          status,
+          detail: detail !== undefined ? detail : steps[idx].detail,
+          timestamp: new Date().toISOString(),
+          durationMs: durationMs !== undefined ? durationMs : steps[idx].durationMs,
+        };
+        onProgress?.({
+          currentAgent: agentId,
+          step: { ...steps[idx] },
+          steps: steps.map((s) => ({ ...s })),
+        });
+      }
+    };
+
     // Step 1: Receive campaign ID and retrieve campaign data
     addLog('Campaign received', `Received campaign ID: ${campaignId}`);
     const campaign = await campaignsRepository.readDocument(campaignId);
     if (!campaign) {
       addLog('Failed', `Campaign with ID ${campaignId} was not found in Firestore.`);
+      emitStep('campaign_agent', 'failed', `Campaign ${campaignId} not found`);
       return {
         campaignId,
         campaignTitle: 'Unknown Campaign',
@@ -65,10 +125,17 @@ export class OrchestratorAgent {
         completedAt: new Date().toISOString(),
         status: 'failed',
         statusMessage: `Campaign ${campaignId} not found. Please select an existing campaign.`,
+        agentSteps: steps,
       };
     }
 
     // Step 2: Campaign Agent interpretation & normalization
+    emitStep(
+      'campaign_agent',
+      'running',
+      `Analyzing brief for "${campaign.title}" (${campaign.category})...`
+    );
+    const tCampaignStart = Date.now();
     addLog(
       'Campaign interpreted',
       `Interpreting campaign "${campaign.title}" (${campaign.category})`
@@ -103,20 +170,52 @@ export class OrchestratorAgent {
       });
     }
 
+    const campaignDuration = Date.now() - tCampaignStart;
+    emitStep(
+      'campaign_agent',
+      'completed',
+      `Brief normalized: ${spec.creator_types.join(', ')} · ${spec.platforms.join(' & ')} · ${spec.niches.join(', ')}`,
+      campaignDuration
+    );
+
     // Step 3 & 4: Creator Intelligence Agent (retrieve & deterministically filter candidates)
+    emitStep(
+      'creator_intelligence_agent',
+      'running',
+      `Searching creator pool across ${spec.niches.join(', ')} niches and ${spec.platforms.join(', ')} platforms...`
+    );
+    const tCreatorStart = Date.now();
     addLog(
       'Candidates retrieved',
       `Querying creator pool across ${spec.niches.join(', ')} niches and ${spec.platforms.join(', ')} platforms`
     );
 
     const candidates = await CreatorIntelligenceAgent.filter_creators(spec);
+    const creatorDuration = Date.now() - tCreatorStart;
     addLog(
       'Candidates filtered',
       `Retrieved ${candidates.length} compatible candidates using deterministic filtering (UGC follower rules respected)`
     );
 
+    emitStep(
+      'creator_intelligence_agent',
+      'completed',
+      `${candidates.length} compatible candidates retrieved via deterministic filtering`,
+      creatorDuration
+    );
+
     if (candidates.length === 0) {
       addLog('Completed', 'No compatible creators found for the given criteria.');
+      emitStep(
+        'matching_agent',
+        'completed',
+        'Skipped: 0 candidates matched deterministic criteria'
+      );
+      emitStep(
+        'orchestrator_agent',
+        'completed',
+        'Completed with 0 recommendations'
+      );
       return {
         campaignId,
         campaignTitle: campaign.title,
@@ -128,20 +227,43 @@ export class OrchestratorAgent {
         status: 'empty',
         statusMessage:
           'No creator candidates matched all deterministic filters. Try broadening target cities, platforms, or niches.',
+        agentSteps: steps,
       };
     }
 
     // Step 5: Matching Agent (semantic qualitative evaluation)
+    emitStep(
+      'matching_agent',
+      'running',
+      `Evaluating ${candidates.length} candidates across niche relevance, audience fit, and deliverable capability...`
+    );
+    const tMatchingStart = Date.now();
     addLog(
       'Matching started',
       `Evaluating ${candidates.length} candidates against campaign requirements`
     );
 
     const evaluations = await MatchingAgent.evaluateCandidates(spec, candidates);
+    const matchingDuration = Date.now() - tMatchingStart;
     addLog(
       'Recommendations generated',
       `Scored ${evaluations.length} creators across qualitative fit dimensions`
     );
+
+    emitStep(
+      'matching_agent',
+      'completed',
+      `Scored and ranked ${evaluations.length} creators with multi-signal fit evaluation`,
+      matchingDuration
+    );
+
+    // Step 6: Orchestrator synthesis & saving
+    emitStep(
+      'orchestrator_agent',
+      'running',
+      `Selecting top 5 matches and persisting recommendation records to Firestore...`
+    );
+    const tOrchestratorStart = Date.now();
 
     // Sort by match score descending and take up to 5 top recommendations (Module 10)
     evaluations.sort((a, b) => b.matchScore - a.matchScore);
@@ -198,6 +320,14 @@ export class OrchestratorAgent {
       `Saved ${finalRecommendations.length} recommendations to Firestore`
     );
 
+    const orchestratorDuration = Date.now() - tOrchestratorStart;
+    emitStep(
+      'orchestrator_agent',
+      'completed',
+      `${finalRecommendations.length} top recommendations ready with decision support signals`,
+      orchestratorDuration
+    );
+
     return {
       campaignId: campaign.id,
       campaignTitle: campaign.title,
@@ -208,6 +338,7 @@ export class OrchestratorAgent {
       completedAt: new Date().toISOString(),
       status: 'succeeded',
       statusMessage: `Successfully analyzed ${candidates.length} candidates and generated ${finalRecommendations.length} recommendations.`,
+      agentSteps: steps,
     };
   }
 

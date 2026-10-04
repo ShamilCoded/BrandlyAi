@@ -15,6 +15,11 @@ import {
   ShieldCheck,
   Info,
   Edit3,
+  Bot,
+  Brain,
+  Zap,
+  Terminal,
+  CheckCircle2,
 } from 'lucide-react';
 import type { Campaign, Creator } from '@/lib/types/domain';
 import {
@@ -48,6 +53,7 @@ export function PitchGeneratorModal({
   const [pitchType, setPitchType] = useState<PitchType>('instagram_dm');
   const [tone, setTone] = useState<PitchTone>('professional');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingStep, setLoadingStep] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
 
   const [subjectText, setSubjectText] = useState<string>('');
@@ -61,8 +67,12 @@ export function PitchGeneratorModal({
       if (!creator || !campaign) return;
 
       setIsLoading(true);
+      setLoadingStep(1);
       setError(null);
       setCopied(false);
+
+      const stepTimer1 = setTimeout(() => setLoadingStep(2), 350);
+      const stepTimer2 = setTimeout(() => setLoadingStep(3), 700);
 
       try {
         const result: GeneratedPitchResult = await generateCreatorPitch({
@@ -86,6 +96,8 @@ export function PitchGeneratorModal({
             : 'Unable to generate the pitch right now.'
         );
       } finally {
+        clearTimeout(stepTimer1);
+        clearTimeout(stepTimer2);
         setIsLoading(false);
       }
     },
@@ -325,14 +337,92 @@ export function PitchGeneratorModal({
             </div>
 
             {isLoading ? (
-              <div className="h-56 bg-slate-950 border border-slate-800 rounded-xl flex flex-col items-center justify-center gap-3 text-slate-400">
-                <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin" />
-                <p className="text-xs font-medium text-slate-300">
-                  Generating personalized pitch...
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Analyzing {creator.name}&apos;s profile fit with {campaign.title}
-                </p>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                    </span>
+                    <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
+                      Outreach Intelligence Pipeline (3 Agent Tasks)
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Step {loadingStep} of 3
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 text-xs font-mono">
+                  {/* Step 1 */}
+                  <div
+                    className={`p-2.5 rounded-lg border flex items-center justify-between transition-colors ${
+                      loadingStep === 1
+                        ? 'bg-indigo-950/40 border-indigo-500 text-white'
+                        : loadingStep > 1
+                        ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <span className="font-semibold truncate">
+                        Agent 1: Analyzing &quot;{campaign.title}&quot; brief & deliverables
+                      </span>
+                    </div>
+                    {loadingStep > 1 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin shrink-0" />
+                    )}
+                  </div>
+
+                  {/* Step 2 */}
+                  <div
+                    className={`p-2.5 rounded-lg border flex items-center justify-between transition-colors ${
+                      loadingStep === 2
+                        ? 'bg-indigo-950/40 border-indigo-500 text-white'
+                        : loadingStep > 2
+                        ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span className="font-semibold truncate">
+                        Agent 2: Inspecting {creator.name}&apos;s niche ({creator.primaryNiche}) & platforms
+                      </span>
+                    </div>
+                    {loadingStep > 2 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : loadingStep === 2 ? (
+                      <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin shrink-0" />
+                    ) : (
+                      <span className="text-[10px] text-slate-600">QUEUED</span>
+                    )}
+                  </div>
+
+                  {/* Step 3 */}
+                  <div
+                    className={`p-2.5 rounded-lg border flex items-center justify-between transition-colors ${
+                      loadingStep === 3
+                        ? 'bg-indigo-950/40 border-indigo-500 text-white'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="font-semibold truncate">
+                        Agent 3: Gemini 3.8 synthesizing personalized {pitchType.replace('_', ' ')} draft
+                      </span>
+                    </div>
+                    {loadingStep === 3 ? (
+                      <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin shrink-0" />
+                    ) : (
+                      <span className="text-[10px] text-slate-600">QUEUED</span>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : error ? (
               <div className="h-56 bg-red-950/20 border border-red-900/40 rounded-xl p-5 flex flex-col items-center justify-center gap-3 text-center">
